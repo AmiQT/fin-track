@@ -1,0 +1,53 @@
+# Java / Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+*.class
+*.log
+*.ctxt
+*.mtj.tmp/
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# Node / Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/*.local
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+# Backend
+backend/.env
+backend/.env.*
+!backend/.env.example
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*.DS_Store
+.settings/
+.project
+.classpath
+.factorypath
+
+# Docker
+postgres_data/
+docker-compose.override.yml
+
+# Database / SQL (As requested)
+*.sql
+
+# Logs
+logs/
+*.log
+backend/logs/
+
+# Temporary files
+tmp/
+temp/

@@ -1,0 +1,48 @@
+spring:
+  application:
+    name: fintrack-pro
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/fintrack}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update           # Flyway handles schema, but let Hibernate update for dev
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+  cache:
+    type: redis
+    redis:
+      time-to-live: 600000       # 10 minutes (600,000 ms)
+
+jwt:
+  secret: ${JWT_SECRET:your-super-secret-jwt-key-minimum-32-chars-long}
+  expiration: 86400000           # 24 hours in ms
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+
+app:
+  admin:
+    email: ${ADMIN_EMAIL:admin@fintrack.com}
+    password: ${ADMIN_PASSWORD:password}

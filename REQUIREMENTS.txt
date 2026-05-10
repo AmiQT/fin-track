@@ -1,0 +1,48 @@
+====================================================
+      FINTRACK PRO - SYSTEM REQUIREMENTS
+====================================================
+
+Untuk menjalankan projek ini secara lokal, sila pastikan perisian berikut telah dipasang dan dikonfigurasi:
+
+1. JAVA DEVELOPMENT KIT (JDK) 21
+   - Versi: JDK 21 (LTS)
+   - Cadangan: Amazon Corretto 21 atau Oracle OpenJDK 21.
+   - Semak: 'java -version' di terminal.
+
+2. APACHE MAVEN
+   - Versi: 3.9.x ke atas
+   - Fungsi: Membina (build) projek backend.
+   - Semak: 'mvn -version' di terminal.
+
+3. DOCKER DESKTOP
+   - Fungsi: Menjalankan PostgreSQL 16 dan Redis 7 melalui docker-compose.
+   - Ini membolehkan anda tidak perlu pasang Postgres/Redis secara manual.
+   - Semak: 'docker compose version' di terminal.
+
+4. NODE.JS & NPM
+   - Versi: Node.js 18.x atau 20.x (LTS)
+   - Fungsi: Menjalankan frontend React + Vite.
+   - Semak: 'node -v' dan 'npm -v' di terminal.
+
+5. INTEGRATED DEVELOPMENT ENVIRONMENT (IDE)
+   - Cadangan Backend: IntelliJ IDEA (Community atau Ultimate) - Sangat disyorkan untuk Java.
+   - Cadangan Frontend: VS Code dengan extension ES7+ React/Redux/React-Native snippets.
+
+----------------------------------------------------
+CARA RUN CEPAT (SETELAH INSTALL SEMUA):
+----------------------------------------------------
+1. Run Database:
+   > docker-compose up -d
+
+2. Run Backend:
+   > cd backend
+   > mvn spring-boot:run
+
+3. Run Frontend:
+   > cd frontend
+   > npm install
+   > npm run dev
+
+----------------------------------------------------
+Disediakan oleh Antigravity untuk FinTrack Pro Project.
+====================================================
