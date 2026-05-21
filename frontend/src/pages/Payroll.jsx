@@ -1,15 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
-import { 
-  FileText, 
-  Download, 
-  PlayCircle, 
-  Search, 
-  Calendar,
+import {
+  Download,
+  PlayCircle,
   Loader2,
-  CheckCircle2,
-  AlertCircle
 } from 'lucide-react';
 
 const Payroll = () => {
@@ -32,7 +27,11 @@ const Payroll = () => {
     }
   };
 
-  useEffect(() => { fetchPayroll(); }, [month, year]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchPayroll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [month, year]);
 
   const handleProcessPayroll = async () => {
     try {
@@ -57,7 +56,7 @@ const Payroll = () => {
       link.setAttribute('download', `payslip-${payrollId}.pdf`);
       document.body.appendChild(link);
       link.click();
-    } catch (error) {
+    } catch {
       showToast('Failed to download PDF.', 'error');
     }
   };
@@ -74,7 +73,7 @@ const Payroll = () => {
       link.click();
       link.remove();
       showToast('Payroll data exported! 📊', 'success');
-    } catch (error) {
+    } catch {
       showToast('Failed to export payroll data.', 'error');
     }
   };

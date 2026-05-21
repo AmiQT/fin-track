@@ -1,20 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
-import { 
-  Plus, 
-  Search, 
-  Edit2, 
-  Trash2, 
-  MoreVertical,
+import {
+  Search,
+  Edit2,
+  Trash2,
   Loader2,
   Filter,
   UserPlus,
   X,
   Save,
-  AlertCircle,
-  Download
+  Download,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -28,6 +25,7 @@ const EmployeeModal = ({ isOpen, onClose, employee, onSave }) => {
 
   useEffect(() => {
     if (employee) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData({ ...employee, joinDate: format(new Date(employee.joinDate), 'yyyy-MM-dd'), password: '' });
     } else {
       setFormData({
@@ -135,7 +133,7 @@ const EmployeeModal = ({ isOpen, onClose, employee, onSave }) => {
 };
 
 const Employees = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const initialQuery = searchParams.get('query') || '';
   const { showToast } = useToast();
   const [employees, setEmployees] = useState([]);
@@ -148,6 +146,7 @@ const Employees = () => {
 
   useEffect(() => {
     const q = searchParams.get('query') || '';
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSearchQuery(q);
   }, [searchParams]);
 
@@ -171,6 +170,7 @@ const Employees = () => {
   useEffect(() => {
     const timer = setTimeout(() => { fetchEmployees(); }, 300);
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery, page]);
 
   const handleSaveEmployee = async (formData) => {
@@ -195,7 +195,7 @@ const Employees = () => {
         await api.delete(`/employees/${id}`);
         showToast('Employee deactivated successfully.', 'success');
         fetchEmployees();
-      } catch (error) {
+      } catch {
         showToast('Failed to delete employee', 'error');
       }
     }
@@ -213,7 +213,7 @@ const Employees = () => {
       link.click();
       link.remove();
       showToast('Export successful! 📊', 'success');
-    } catch (error) {
+    } catch {
       showToast('Failed to export employees.', 'error');
     }
   };

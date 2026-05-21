@@ -1,15 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
-import { 
-  Check, 
-  X, 
-  Clock, 
+import {
+  Check,
+  X,
   Calendar,
-  User,
-  Info,
   Loader2,
-  CheckCircle2
+  CheckCircle2,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -92,7 +89,9 @@ const Leaves = () => {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchLeaves();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   const handleAction = async (id, action) => {

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback } from 'react';
 import { 
   CheckCircle2, 
   AlertCircle, 
@@ -76,6 +76,7 @@ export const ToastProvider = ({ children }) => {
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useToast = () => {
   const context = useContext(ToastContext);
   if (!context) throw new Error('useToast must be used within a ToastProvider');

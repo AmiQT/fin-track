@@ -1,20 +1,19 @@
-import React from 'react';
+import { useState } from 'react';
 import { NavLink, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { 
-  LayoutDashboard, 
-  Users, 
-  Wallet, 
-  CalendarRange, 
-  LogOut, 
-  Bell, 
+import {
+  LayoutDashboard,
+  Users,
+  Wallet,
+  CalendarRange,
+  LogOut,
+  Bell,
   Search,
   User as UserIcon,
   ChevronRight,
   Menu,
   X,
   Inbox,
-  Clock
 } from 'lucide-react';
 
 const SidebarLink = ({ to, icon: Icon, label, onClick }) => (
@@ -47,9 +46,9 @@ const NotificationItem = ({ title, time }) => (
 const Layout = () => {
   const { user, logout, isAdmin } = useAuth();
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = React.useState('');
-  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
-  const [isNotificationsOpen, setIsNotificationsOpen] = React.useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
   const handleLogout = () => {
     logout();

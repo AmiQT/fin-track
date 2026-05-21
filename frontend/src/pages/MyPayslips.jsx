@@ -1,14 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
-import { 
-  Download,
+import {
   Wallet,
   FileText,
   Loader2,
   ChevronDown,
   ChevronUp,
-  ArrowRight
+  ArrowRight,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -22,7 +21,7 @@ const DeductionRow = ({ label, value, sublabel }) => (
   </div>
 );
 
-const PayslipCard = ({ payroll, onDownload }) => {
+const PayslipCard = ({ payroll }) => {
   const [expanded, setExpanded] = useState(false);
 
   const getMonthName = (month) => format(new Date(2024, month - 1, 1), 'MMMM');
@@ -165,6 +164,7 @@ const MyPayslips = () => {
       }
     };
     fetchMyPayroll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleDownload = async (payrollId) => {
@@ -179,7 +179,7 @@ const MyPayslips = () => {
       link.click();
       link.remove();
       showToast('Payslip downloaded! 📄', 'success');
-    } catch (error) {
+    } catch {
       showToast('Failed to download payslip. Please try again.', 'error');
     }
   };
