@@ -94,6 +94,42 @@ Recent stabilizations include:
 - Fixed staff password hash corruption.
 - Seamlessly aligned backend and frontend authentication logic for flawless access.
 
+---
+
+## 👤 Employee Self-Service Features
+
+Employees can access their own data without admin privileges:
+
+| Feature | Endpoint | Description |
+|---|---|---|
+| My Leaves | `GET /api/leaves/my` | View all personal leave requests |
+| Apply Leave | `POST /api/leaves` | Apply for Annual, Sick, or Unpaid leave |
+| My Payslips | `GET /api/payroll/my` | View personal payroll history |
+| Download PDF | `GET /api/payslip/{id}/pdf` | Download payslip as PDF |
+| My Profile | `/my-profile` | View and update personal profile |
+
+Employee identity is resolved **securely via their authenticated JWT email** — no need to send `employeeId` manually.
+
+---
+
+## ✅ Project Status
+
+> **COMPLETED** — All planned features have been implemented and tested.
+
+| Module | Status |
+|---|---|
+| Authentication (JWT) | Done |
+| Employee Management (Admin) | Done |
+| Payroll Processing (Admin) | Done |
+| Leave Management (Admin) | Done |
+| My Leaves (Employee) | Done |
+| My Payslips + PDF (Employee) | Done |
+| My Profile (Employee) | Done |
+| Unit Tests (Auth, Employee, Leave, Payroll) | Done |
+| Docker Compose Full Stack | Done |
+
+---
+
 ## 📄 License
 This project is licensed under the MIT License - see the LICENSE file for details.
 

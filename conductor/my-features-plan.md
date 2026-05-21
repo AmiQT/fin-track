@@ -1,35 +1,54 @@
 # Implementation Plan: My Payslips & My Leaves
 
+> **STATUS: COMPLETED** — Semua features telah berjaya diimplementasi. Dokumen ini dikemaskini pada 2026-05-21.
+
+---
+
 ## Objective
-Implement the missing employee-facing features: "My Payslips" and "My Leaves". This requires adding secure backend endpoints that resolve the employee via their authenticated email, and building the corresponding React components.
+Implement employee-facing features: "My Payslips" dan "My Leaves" — membolehkan employee lihat rekod sendiri, apply cuti, dan download payslip PDF, semua berdasarkan authenticated email mereka.
+
+---
 
 ## Key Files & Context
-- **Backend**: `LeaveController`, `LeaveService`, `PayrollController`, `PayrollService`, `EmployeeRepository`.
-- **Frontend**: `App.jsx`, `src/pages/MyLeaves.jsx` (new), `src/pages/MyPayslips.jsx` (new).
 
-## Implementation Steps
+| Layer | File |
+|---|---|
+| Backend Repository | `EmployeeRepository.java` |
+| Backend Service | `LeaveService.java`, `PayrollService.java` |
+| Backend Controller | `LeaveController.java`, `PayrollController.java` |
+| Frontend Pages | `src/pages/MyLeaves.jsx`, `src/pages/MyPayslips.jsx` |
+| Frontend Routing | `src/App.jsx` |
+
+---
+
+## Implementation — DONE ✅
 
 ### 1. Backend Data Resolution
-- **EmployeeRepository**: Add `Optional<Employee> findByUser_Email(String email);` to fetch the employee record linked to the logged-in user.
-- **LeaveService & Controller**:
-  - Update `getMyLeaves(String email)` to fetch leaves by the employee's email instead of `user.getId()`.
-  - Update `applyLeave(LeaveRequestDto, String email)` to resolve the employee via email so employees don't need to send their `employeeId` manually.
-- **PayrollService & Controller**:
-  - Add `getMyPayroll(String email)` to fetch payroll history for the authenticated employee.
-  - Expose `GET /api/payroll/my`.
+
+- **EmployeeRepository** — `findByUserEmail(String email)` dan `findByEmail(String email)` tersedia untuk lookup employee via email.
+- **LeaveService**:
+  - `getMyLeaves(String email)` — fetch semua leave request untuk employee yang logged in.
+  - `applyLeave(LeaveRequestDto, String email)` — resolve employee via email, tak perlu hantar `employeeId` manual.
+  - `getLeaveBalance(String email)` — return baki Annual & Sick leave untuk tahun semasa.
+- **LeaveController** — expose `GET /api/leaves/my` dan `POST /api/leaves`.
+- **PayrollService** — `getMyPayroll(String email)` fetch payroll history untuk authenticated employee.
+- **PayrollController** — expose `GET /api/payroll/my`.
 
 ### 2. Frontend React Components
-- **MyLeaves.jsx**:
-  - Create a page that fetches and displays the employee's leaves (`/api/leaves/my`).
-  - Add a form/modal to apply for new leaves (Annual, Sick, Unpaid) calling `POST /api/leaves`.
-- **MyPayslips.jsx**:
-  - Create a page that fetches and displays the employee's payroll history (`/api/payroll/my`).
-  - Include a "Download PDF" button that calls the existing `/api/payslip/{id}/pdf` endpoint.
+
+- **MyLeaves.jsx** — page untuk papar senarai leave request employee, dengan form/modal untuk apply leave baru (Annual, Sick, Unpaid).
+- **MyPayslips.jsx** — page untuk papar payroll history employee, dengan butang "Download PDF" yang hit `/api/payslip/{id}/pdf`.
 
 ### 3. Frontend Routing
-- **App.jsx**: Replace the `Placeholder` mock components for `/my-payslips` and `/my-leaves` with the newly created `MyPayslips` and `MyLeaves` components.
 
-## Verification & Testing
-- Login as an employee (e.g., `ali@fintrack.com`).
-- Navigate to "My Leaves" to ensure past leaves load and new leaves can be applied.
-- Navigate to "My Payslips" to ensure payroll history loads and PDF generation works correctly.
+- **App.jsx** — route `/my-leaves` dan `/my-payslips` dah disambung ke `MyLeaves` dan `MyPayslips` components (bukan Placeholder lagi).
+
+---
+
+## Verification Checklist ✅
+
+- [x] Login sebagai employee (contoh: `ali@fintrack.com`)
+- [x] Navigate ke **My Leaves** — past leaves load, boleh apply leave baru
+- [x] Navigate ke **My Payslips** — payroll history load, PDF download berfungsi
+- [x] Admin routes masih protected dengan `requireAdmin`
+- [x] Unit tests untuk `LeaveService` dan `PayrollService` lulus
