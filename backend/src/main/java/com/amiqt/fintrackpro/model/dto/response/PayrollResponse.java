@@ -15,6 +15,8 @@ public record PayrollResponse(
         BigDecimal epfEmployer,
         BigDecimal socsoEmployee,
         BigDecimal socsoEmployer,
+        BigDecimal eisEmployee,
+        BigDecimal eisEmployer,
         BigDecimal incomeTax,
         BigDecimal unpaidLeaveDeduction,
         BigDecimal totalDeductions,

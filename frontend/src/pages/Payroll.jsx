@@ -9,7 +9,9 @@ import {
   Calendar,
   Loader2,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  ChevronDown,
+  FileSpreadsheet
 } from 'lucide-react';
 
 const Payroll = () => {
@@ -19,6 +21,7 @@ const Payroll = () => {
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [year, setYear] = useState(new Date().getFullYear());
   const [processing, setProcessing] = useState(false);
+  const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
 
   const fetchPayroll = async () => {
     try {
@@ -38,7 +41,7 @@ const Payroll = () => {
     try {
       setProcessing(true);
       await api.post('/payroll/process', { month, year });
-      showToast('Payroll processed successfully! 💸', 'success');
+      showToast('Payroll processed successfully.', 'success');
       fetchPayroll();
     } catch (error) {
       const msg = error.response?.data?.message || 'Failed to process payroll.';
@@ -63,8 +66,9 @@ const Payroll = () => {
   };
 
   const handleExportCsv = async () => {
+    setExportDropdownOpen(false);
     try {
-      showToast('Exporting payroll data...', 'loading');
+      showToast('Exporting payroll CSV...', 'loading');
       const response = await api.get(`/payroll/export/${month}/${year}`, { responseType: 'blob' });
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
@@ -73,9 +77,27 @@ const Payroll = () => {
       document.body.appendChild(link);
       link.click();
       link.remove();
-      showToast('Payroll data exported! 📊', 'success');
+      showToast('Payroll CSV exported.', 'success');
     } catch (error) {
-      showToast('Failed to export payroll data.', 'error');
+      showToast('Failed to export CSV.', 'error');
+    }
+  };
+
+  const handleExportExcel = async () => {
+    setExportDropdownOpen(false);
+    try {
+      showToast('Generating Excel report...', 'loading');
+      const response = await api.get(`/payroll/export/excel/${month}/${year}`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `payroll_${month}_${year}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      showToast('Payroll Excel exported.', 'success');
+    } catch (error) {
+      showToast('Failed to export Excel.', 'error');
     }
   };
 
@@ -87,14 +109,36 @@ const Payroll = () => {
           <p className="text-slate-500 text-sm mt-1">Manage monthly salary disbursements and generate payslips.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <button 
-            onClick={handleExportCsv}
-            disabled={payrolls.length === 0}
-            className="flex items-center justify-center gap-2 px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-2xl font-bold shadow-sm hover:bg-slate-50 transition-all active:scale-95 disabled:opacity-50"
-          >
-            <Download size={20} />
-            Export CSV
-          </button>
+          {/* Export Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setExportDropdownOpen(o => !o)}
+              disabled={payrolls.length === 0}
+              className="flex items-center gap-2 px-5 py-3 bg-white border border-slate-200 text-slate-700 rounded-2xl font-bold shadow-sm hover:bg-slate-50 transition-all active:scale-95 disabled:opacity-50"
+            >
+              <Download size={18} />
+              Export
+              <ChevronDown size={14} className={`transition-transform ${exportDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {exportDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-44 bg-white border border-slate-100 rounded-2xl shadow-xl z-20 overflow-hidden animate-in fade-in zoom-in duration-200">
+                <button
+                  onClick={handleExportCsv}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  <FileText size={16} className="text-slate-400" />
+                  Export CSV
+                </button>
+                <button
+                  onClick={handleExportExcel}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-emerald-700 hover:bg-emerald-50 transition-colors border-t border-slate-50"
+                >
+                  <FileSpreadsheet size={16} className="text-emerald-500" />
+                  Export Excel
+                </button>
+              </div>
+            )}
+          </div>
           <div className="flex bg-white border border-slate-200 p-1 rounded-xl shadow-sm">
             <select 
               value={month} 

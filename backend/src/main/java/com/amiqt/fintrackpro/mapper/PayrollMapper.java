@@ -20,6 +20,8 @@ public class PayrollMapper {
                 payroll.getEpfEmployer(),
                 payroll.getSocsoEmployee(),
                 payroll.getSocsoEmployer(),
+                payroll.getEisEmployee(),
+                payroll.getEisEmployer(),
                 payroll.getIncomeTax(),
                 payroll.getUnpaidLeaveDeduction(),
                 payroll.getTotalDeductions(),

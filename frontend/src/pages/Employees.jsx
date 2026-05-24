@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
@@ -14,7 +14,10 @@ import {
   X,
   Save,
   AlertCircle,
-  Download
+  Download,
+  ChevronDown,
+  FileSpreadsheet,
+  FileText
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -59,29 +62,29 @@ const EmployeeModal = ({ isOpen, onClose, employee, onSave }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">Employee Code</label>
-                <input required placeholder="e.g. EMP001" className={inputClass} value={formData.employeeCode} onChange={(e) => setFormData({...formData, employeeCode: e.target.value})} />
+                <input required placeholder="e.g. EMP001" className={inputClass} value={formData.employeeCode || ''} onChange={(e) => setFormData({...formData, employeeCode: e.target.value})} />
               </div>
               <div>
                 <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">Full Name</label>
-                <input required className={inputClass} value={formData.fullName} onChange={(e) => setFormData({...formData, fullName: e.target.value})} />
+                <input required className={inputClass} value={formData.fullName || ''} onChange={(e) => setFormData({...formData, fullName: e.target.value})} />
               </div>
               <div>
                 <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">Email Address</label>
-                <input type="email" required className={inputClass} value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} disabled={!!employee} />
+                <input type="email" required className={inputClass} value={formData.email || ''} onChange={(e) => setFormData({...formData, email: e.target.value})} disabled={!!employee} />
               </div>
               {!employee && (
                 <div>
                   <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">Initial Password</label>
-                  <input type="password" placeholder="Leave blank for 'password123'" className={inputClass} value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} />
+                  <input type="password" placeholder="Leave blank for 'password123'" className={inputClass} value={formData.password || ''} onChange={(e) => setFormData({...formData, password: e.target.value})} />
                 </div>
               )}
               <div>
                 <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">Phone</label>
-                <input className={inputClass} value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} />
+                <input className={inputClass} value={formData.phone || ''} onChange={(e) => setFormData({...formData, phone: e.target.value})} />
               </div>
               <div>
                 <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">Department</label>
-                <select className={inputClass} value={formData.department} onChange={(e) => setFormData({...formData, department: e.target.value})}>
+                <select className={inputClass} value={formData.department || ''} onChange={(e) => setFormData({...formData, department: e.target.value})}>
                   <option value="">Select Dept</option>
                   <option value="IT">IT</option>
                   <option value="HR">HR</option>
@@ -92,11 +95,11 @@ const EmployeeModal = ({ isOpen, onClose, employee, onSave }) => {
               </div>
               <div>
                 <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">Position</label>
-                <input className={inputClass} value={formData.position} onChange={(e) => setFormData({...formData, position: e.target.value})} />
+                <input className={inputClass} value={formData.position || ''} onChange={(e) => setFormData({...formData, position: e.target.value})} />
               </div>
               <div>
                 <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">Join Date</label>
-                <input type="date" required className={inputClass} value={formData.joinDate} onChange={(e) => setFormData({...formData, joinDate: e.target.value})} />
+                <input type="date" required className={inputClass} value={formData.joinDate || ''} onChange={(e) => setFormData({...formData, joinDate: e.target.value})} />
               </div>
             </div>
 
@@ -105,15 +108,15 @@ const EmployeeModal = ({ isOpen, onClose, employee, onSave }) => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <p className="text-[10px] text-slate-500 mb-1 ml-1 font-bold">Basic Salary</p>
-                  <input type="number" required className={`${inputClass} font-bold`} value={formData.basicSalary} onChange={(e) => setFormData({...formData, basicSalary: e.target.value})} />
+                  <input type="number" required className={`${inputClass} font-bold`} value={formData.basicSalary || ''} onChange={(e) => setFormData({...formData, basicSalary: e.target.value})} />
                 </div>
                 <div>
                   <p className="text-[10px] text-slate-500 mb-1 ml-1 font-bold">Housing</p>
-                  <input type="number" className={inputClass} value={formData.housingAllowance} onChange={(e) => setFormData({...formData, housingAllowance: e.target.value})} />
+                  <input type="number" className={inputClass} value={formData.housingAllowance ?? 0} onChange={(e) => setFormData({...formData, housingAllowance: e.target.value})} />
                 </div>
                 <div>
                   <p className="text-[10px] text-slate-500 mb-1 ml-1 font-bold">Transport</p>
-                  <input type="number" className={inputClass} value={formData.transportAllowance} onChange={(e) => setFormData({...formData, transportAllowance: e.target.value})} />
+                  <input type="number" className={inputClass} value={formData.transportAllowance ?? 0} onChange={(e) => setFormData({...formData, transportAllowance: e.target.value})} />
                 </div>
               </div>
             </div>
@@ -177,10 +180,10 @@ const Employees = () => {
     try {
       if (selectedEmployee) {
         await api.put(`/employees/${selectedEmployee.id}`, formData);
-        showToast('Employee updated successfully! ✨', 'success');
+        showToast('Employee updated successfully.', 'success');
       } else {
         await api.post('/employees', formData);
-        showToast('New employee added! Welcome to the team. 🚀', 'success');
+        showToast('New employee added successfully.', 'success');
       }
       setIsModalOpen(false);
       fetchEmployees();
@@ -201,9 +204,12 @@ const Employees = () => {
     }
   };
 
-  const handleExport = async () => {
+  const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
+
+  const handleExportCsv = async () => {
+    setExportDropdownOpen(false);
     try {
-      showToast('Preparing your export...', 'loading');
+      showToast('Preparing CSV export...', 'loading');
       const response = await api.get('/employees/export', { responseType: 'blob' });
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
@@ -212,9 +218,27 @@ const Employees = () => {
       document.body.appendChild(link);
       link.click();
       link.remove();
-      showToast('Export successful! 📊', 'success');
+      showToast('CSV exported successfully.', 'success');
     } catch (error) {
-      showToast('Failed to export employees.', 'error');
+      showToast('Failed to export CSV.', 'error');
+    }
+  };
+
+  const handleExportExcel = async () => {
+    setExportDropdownOpen(false);
+    try {
+      showToast('Generating Excel file...', 'loading');
+      const response = await api.get('/employees/export/excel', { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'employees.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      showToast('Excel exported successfully.', 'success');
+    } catch (error) {
+      showToast('Failed to export Excel.', 'error');
     }
   };
 
@@ -226,10 +250,35 @@ const Employees = () => {
           <p className="text-slate-500 text-sm mt-1">Manage and monitor your workforce efficiently.</p>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={handleExport} className="flex items-center justify-center gap-2 px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-2xl font-bold shadow-sm hover:bg-slate-50 transition-all active:scale-95">
-            <Download size={20} />
-            Export CSV
-          </button>
+          {/* Export Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setExportDropdownOpen(o => !o)}
+              className="flex items-center gap-2 px-5 py-3 bg-white border border-slate-200 text-slate-700 rounded-2xl font-bold shadow-sm hover:bg-slate-50 transition-all active:scale-95"
+            >
+              <Download size={18} />
+              Export
+              <ChevronDown size={14} className={`transition-transform ${exportDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {exportDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-44 bg-white border border-slate-100 rounded-2xl shadow-xl z-20 overflow-hidden animate-in fade-in zoom-in duration-200">
+                <button
+                  onClick={handleExportCsv}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  <FileText size={16} className="text-slate-400" />
+                  Export CSV
+                </button>
+                <button
+                  onClick={handleExportExcel}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-emerald-700 hover:bg-emerald-50 transition-colors border-t border-slate-50"
+                >
+                  <FileSpreadsheet size={16} className="text-emerald-500" />
+                  Export Excel
+                </button>
+              </div>
+            )}
+          </div>
           <button onClick={() => { setSelectedEmployee(null); setIsModalOpen(true); }} className="flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-2xl font-bold shadow-lg shadow-primary-600/20 hover:bg-primary-700 transition-all active:scale-95">
             <UserPlus size={20} />
             Add New Employee

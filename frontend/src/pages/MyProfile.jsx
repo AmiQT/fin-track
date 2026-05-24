@@ -64,6 +64,10 @@ const MyProfile = () => {
 
   const handlePasswordChange = async (e) => {
     e.preventDefault();
+    if (passwordForm.newPassword.length < 6) {
+      showToast('New password must be at least 6 characters!', 'error');
+      return;
+    }
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
       showToast('Passwords do not match!', 'error');
       return;
@@ -74,12 +78,18 @@ const MyProfile = () => {
         oldPassword: passwordForm.oldPassword,
         newPassword: passwordForm.newPassword
       });
-      showToast('Password updated successfully! 🔐', 'success');
+      showToast('Password updated successfully.', 'success');
       setShowPasswordModal(false);
       setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' });
       setPasswordStatus({ loading: false, message: '', type: '' });
     } catch (error) {
-      const msg = error.response?.data?.message || 'Failed to update password. Check old password.';
+      let msg = 'Failed to update password. Check old password.';
+      if (error.response?.data?.errors) {
+        // Extract validation errors from spring validation
+        msg = Object.values(error.response.data.errors).join(', ');
+      } else if (error.response?.data?.message) {
+        msg = error.response.data.message;
+      }
       showToast(msg, 'error');
       setPasswordStatus({ loading: false, message: msg, type: 'error' });
     }
@@ -89,6 +99,18 @@ const MyProfile = () => {
     return (
       <div className="h-[60vh] flex items-center justify-center">
         <Loader2 className="animate-spin text-primary-500" size={40} />
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="py-20 text-center bg-white rounded-3xl border border-slate-100 shadow-sm max-w-2xl mx-auto">
+        <AlertCircle className="text-rose-500 mx-auto mb-4 animate-bounce" size={48} />
+        <h3 className="text-slate-800 font-bold text-lg">Gagal Memuatkan Profil</h3>
+        <p className="text-slate-500 text-sm mt-1 max-w-md mx-auto px-4">
+          Sesi anda mungkin telah tamat atau akaun anda tiada rekod pekerja yang sah. Sila cuba log keluar dan log masuk semula.
+        </p>
       </div>
     );
   }

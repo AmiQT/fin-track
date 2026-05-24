@@ -1,6 +1,8 @@
 import React from 'react';
 import { NavLink, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import api from '../services/api';
+import { formatDistanceToNow } from 'date-fns';
 import { 
   LayoutDashboard, 
   Users, 
@@ -34,15 +36,31 @@ const SidebarLink = ({ to, icon: Icon, label, onClick }) => (
   </NavLink>
 );
 
-const NotificationItem = ({ title, time }) => (
-  <div className="p-4 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0 cursor-pointer group">
-    <div className="flex justify-between items-start mb-1">
-      <h4 className="text-xs font-bold text-slate-800 group-hover:text-primary-600 transition-colors">{title}</h4>
-      <span className="text-[9px] font-medium text-slate-400">{time}</span>
+const NotificationItem = ({ id, title, message, isRead, createdAt, onClick }) => {
+  const timeFormatted = createdAt ? formatDistanceToNow(new Date(createdAt), { addSuffix: true }) : '';
+  
+  return (
+    <div 
+      onClick={() => onClick(id)}
+      className={`p-4 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0 cursor-pointer group flex items-start gap-3 relative ${
+        !isRead ? 'bg-primary-50/20 hover:bg-primary-50/40' : ''
+      }`}
+    >
+      {!isRead && (
+        <span className="w-1.5 h-1.5 bg-primary-500 rounded-full mt-1.5 shrink-0"></span>
+      )}
+      <div className="flex-1 min-w-0">
+        <div className="flex justify-between items-start mb-0.5">
+          <h4 className={`text-xs font-bold text-slate-800 group-hover:text-primary-600 transition-colors truncate pr-2`}>
+            {title}
+          </h4>
+          <span className="text-[9px] font-medium text-slate-400 whitespace-nowrap">{timeFormatted}</span>
+        </div>
+        <p className="text-[10px] text-slate-500 leading-relaxed">{message}</p>
+      </div>
     </div>
-    <p className="text-[10px] text-slate-500 leading-relaxed">System activity recorded for your account.</p>
-  </div>
-);
+  );
+};
 
 const Layout = () => {
   const { user, logout, isAdmin } = useAuth();
@@ -50,6 +68,45 @@ const Layout = () => {
   const [searchQuery, setSearchQuery] = React.useState('');
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = React.useState(false);
+  const [notifications, setNotifications] = React.useState([]);
+  const [unreadCount, setUnreadCount] = React.useState(0);
+
+  const fetchNotifications = async () => {
+    try {
+      const nRes = await api.get('/notifications');
+      const cRes = await api.get('/notifications/unread-count');
+      setNotifications(nRes.data);
+      setUnreadCount(cRes.data.count);
+    } catch (error) {
+      console.error('Failed to fetch notifications', error);
+    }
+  };
+
+  React.useEffect(() => {
+    if (user) {
+      fetchNotifications();
+      const interval = setInterval(fetchNotifications, 15000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
+
+  const handleMarkAsRead = async (id) => {
+    try {
+      await api.put(`/notifications/${id}/read`);
+      fetchNotifications();
+    } catch (error) {
+      console.error('Failed to mark as read', error);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await api.put('/notifications/read-all');
+      fetchNotifications();
+    } catch (error) {
+      console.error('Failed to mark all as read', error);
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -66,20 +123,6 @@ const Layout = () => {
   };
 
   const closeSidebar = () => setIsSidebarOpen(false);
-
-  const adminNotifications = [
-    { title: 'New Leave Request: Ali Ahmad', time: '10m ago' },
-    { title: 'Payroll Processed: May 2026', time: '2h ago' },
-    { title: 'System Backup Successful', time: '5h ago' }
-  ];
-
-  const employeeNotifications = [
-    { title: 'Payslip Ready: May 2026', time: '1h ago' },
-    { title: 'Leave Approved: Annual Leave', time: '1d ago' },
-    { title: 'Welcome to FinTrack Pro', time: '2d ago' }
-  ];
-
-  const notifications = isAdmin ? adminNotifications : employeeNotifications;
 
   return (
     <div className="flex min-h-screen w-full bg-slate-50">
@@ -193,10 +236,14 @@ const Layout = () => {
               }`}
             >
               <Bell size={20} />
-              <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-primary-500 rounded-full border-2 border-white"></span>
+              {unreadCount > 0 && (
+                <span className="absolute top-2 right-2 w-4 h-4 bg-primary-500 rounded-full border-2 border-white text-[9px] font-black text-white flex items-center justify-center">
+                  {unreadCount}
+                </span>
+              )}
             </button>
 
-            {/* Notifications Dropdown */}
+            {/* {/* Notifications Dropdown */}
             {isNotificationsOpen && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setIsNotificationsOpen(false)}></div>
@@ -206,16 +253,33 @@ const Layout = () => {
                       <Inbox size={16} className="text-primary-500" />
                       Notifications
                     </h3>
-                    <span className="bg-primary-50 text-primary-600 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter">
-                      {notifications.length} New
-                    </span>
+                    {unreadCount > 0 && (
+                      <button 
+                        onClick={handleMarkAllAsRead}
+                        className="text-[10px] font-bold text-primary-600 hover:text-primary-700 transition-colors"
+                      >
+                        Mark all as read
+                      </button>
+                    )}
                   </div>
                   <div className="max-h-96 overflow-y-auto">
-                    {notifications.map((n, i) => (
-                      <NotificationItem key={i} {...n} />
-                    ))}
+                    {notifications.length === 0 ? (
+                      <div className="py-12 px-4 text-center">
+                        <Inbox size={28} className="text-slate-300 mx-auto mb-2" />
+                        <p className="text-xs font-bold text-slate-400">Tiada Notifikasi</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">Semua alerts sistem akan dipaparkan di sini.</p>
+                      </div>
+                    ) : (
+                      notifications.map((n) => (
+                        <NotificationItem 
+                          key={n.id} 
+                          {...n} 
+                          onClick={handleMarkAsRead} 
+                        />
+                      ))
+                    )}
                   </div>
-                  <button className="w-full py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-primary-600 hover:bg-slate-50 transition-all">
+                  <button className="w-full py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-primary-600 hover:bg-slate-50 transition-all border-t border-slate-50">
                     View All Activity
                   </button>
                 </div>

@@ -1,0 +1,2 @@
+-- This migration is intentionally left empty. 
+-- Admin user seeding is now handled by DataInitializer.java using environment variables.

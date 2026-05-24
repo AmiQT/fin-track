@@ -141,7 +141,16 @@ const PayslipCard = ({ payroll, onDownload }) => {
         </div>
       )}
 
-      {/* ── Download Button section temporarily removed ── */}
+      {/* ── Download Button section ── */}
+      <div className="px-6 pb-6 pt-2 border-t border-slate-50">
+        <button
+          onClick={() => onDownload(payroll.id)}
+          className="w-full flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 px-4 rounded-2xl text-xs transition-all active:scale-[0.98] shadow-lg shadow-slate-900/10"
+        >
+          <Download size={14} />
+          Download PDF Payslip
+        </button>
+      </div>
     </div>
   );
 };
@@ -178,7 +187,7 @@ const MyPayslips = () => {
       document.body.appendChild(link);
       link.click();
       link.remove();
-      showToast('Payslip downloaded! 📄', 'success');
+      showToast('Payslip downloaded.', 'success');
     } catch (error) {
       showToast('Failed to download payslip. Please try again.', 'error');
     }

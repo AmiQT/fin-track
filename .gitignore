@@ -39,9 +39,12 @@ backend/.env.*
 # Docker
 postgres_data/
 docker-compose.override.yml
+.env
+!.env.example
 
-# Database / SQL (As requested)
-*.sql
+# Debug / one-off SQL utility scripts (not useful to contributors)
+backend/src/main/resources/db/fix_passwords.sql
+backend/src/main/resources/db/repair_mock_data.sql
 
 # Logs
 logs/

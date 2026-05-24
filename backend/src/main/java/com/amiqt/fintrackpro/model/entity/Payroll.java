@@ -55,6 +55,12 @@ public class Payroll {
     @Column(name = "socso_employer")
     private BigDecimal socsoEmployer;
 
+    @Column(name = "eis_employee")
+    private BigDecimal eisEmployee;
+
+    @Column(name = "eis_employer")
+    private BigDecimal eisEmployer;
+
     @Column(name = "income_tax")
     private BigDecimal incomeTax;
 

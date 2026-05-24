@@ -13,12 +13,22 @@ import com.amiqt.fintrackpro.model.entity.LeaveRequest;
 import com.amiqt.fintrackpro.repository.EmployeeRepository;
 import com.amiqt.fintrackpro.repository.PayrollRepository;
 import com.amiqt.fintrackpro.repository.LeaveRepository;
+import com.amiqt.fintrackpro.service.payroll.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.ss.usermodel.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.apache.poi.xssf.usermodel.XSSFCellStyle;
+import org.apache.poi.xssf.usermodel.XSSFColor;
+import org.apache.poi.xssf.usermodel.XSSFFont;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.DayOfWeek;
@@ -27,6 +37,7 @@ import java.time.YearMonth;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PayrollService {
@@ -35,22 +46,32 @@ public class PayrollService {
     private final EmployeeRepository employeeRepository;
     private final LeaveRepository leaveRepository;
     private final PayrollMapper payrollMapper;
+    private final NotificationService notificationService;
+
+    // Payroll Calculators (Strategy Pattern)
+    private final EpfCalculator epfCalculator;
+    private final SocsoCalculator socsoCalculator;
+    private final EisCalculator eisCalculator;
+    private final PcbCalculator pcbCalculator;
 
     @Transactional
     @CacheEvict(value = "dashboard-summary", allEntries = true)
     public List<PayrollResponse> processPayroll(PayrollRequest request) {
+        log.info("Processing payroll for {}/{}", request.month(), request.year());
         List<Employee> activeEmployees = employeeRepository.findAll().stream()
                 .filter(e -> e.getStatus().name().equals("ACTIVE"))
                 .toList();
 
-        return activeEmployees.stream()
+        List<PayrollResponse> results = activeEmployees.stream()
                 .map(employee -> calculatePayroll(employee, request.month(), request.year()))
                 .map(payrollMapper::toResponse)
                 .collect(Collectors.toList());
+
+        log.info("Payroll processed for {} employees — {}/{}", results.size(), request.month(), request.year());
+        return results;
     }
 
     public Payroll calculatePayroll(Employee employee, Integer month, Integer year) {
-        // Check if already processed
         payrollRepository.findByEmployeeIdAndMonthAndYear(employee.getId(), month, year)
                 .ifPresent(p -> {
                     throw new PayrollAlreadyProcessedException(
@@ -58,14 +79,12 @@ public class PayrollService {
                     );
                 });
 
-        BigDecimal basic = employee.getBasicSalary();
-        BigDecimal housing = employee.getHousingAllowance();
-        BigDecimal transport = employee.getTransportAllowance();
+        BigDecimal basic = employee.getBasicSalary() != null ? employee.getBasicSalary() : BigDecimal.ZERO;
+        BigDecimal housing = employee.getHousingAllowance() != null ? employee.getHousingAllowance() : BigDecimal.ZERO;
+        BigDecimal transport = employee.getTransportAllowance() != null ? employee.getTransportAllowance() : BigDecimal.ZERO;
 
-        // 1. Gross Salary
         BigDecimal gross = basic.add(housing).add(transport);
 
-        // 2. Unpaid Leave Deduction
         long unpaidDays = calculateUnpaidLeaveDays(employee.getId(), month, year);
         int workingDays = calculateWorkingDays(month, year);
         BigDecimal unpaidDeduction = BigDecimal.ZERO;
@@ -74,28 +93,23 @@ public class PayrollService {
                     .multiply(BigDecimal.valueOf(unpaidDays));
         }
 
-        // 3. EPF Calculation
-        BigDecimal epfEmployee = basic.multiply(new BigDecimal("0.11")).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal epfEmployer = basic.multiply(new BigDecimal("0.13")).setScale(2, RoundingMode.HALF_UP);
-
-        // 4. SOCSO Calculation (Simplified tier)
-        BigDecimal socsoEmployee = calculateSocsoEmployee(basic);
-        BigDecimal socsoEmployer = calculateSocsoEmployer(basic);
-
-        // 5. Income Tax (PCB)
         BigDecimal adjustedGross = gross.subtract(unpaidDeduction);
-        BigDecimal incomeTax = BigDecimal.ZERO;
-        if (adjustedGross.compareTo(new BigDecimal("3000")) > 0) {
-            incomeTax = adjustedGross.subtract(new BigDecimal("3000"))
-                    .multiply(new BigDecimal("0.01"))
-                    .setScale(2, RoundingMode.HALF_UP);
-        }
+        
+        // EPF Calculation using Strategy
+        BigDecimal epfEmployee = epfCalculator.calculate(basic, employee);
+        BigDecimal epfEmployer = epfCalculator.calculateEmployerContribution(basic);
+        
+        // SOCSO & EIS Calculation using Strategy
+        BigDecimal socsoEmployee = socsoCalculator.calculate(basic, employee);
+        BigDecimal socsoEmployer = socsoCalculator.calculateEmployerContribution(basic);
+        BigDecimal eisEmployee = eisCalculator.calculate(basic, employee);
+        BigDecimal eisEmployer = eisCalculator.calculateEmployerContribution(basic);
 
-        // 6. Total Deductions
-        BigDecimal totalDeductions = epfEmployee.add(socsoEmployee).add(incomeTax).add(unpaidDeduction);
+        // PCB (Income Tax) Calculation using Strategy
+        BigDecimal incomeTax = pcbCalculator.calculate(adjustedGross, employee);
 
-        // 7. Net Salary
-        BigDecimal netSalary = gross.subtract(totalDeductions);
+        BigDecimal totalDeductions = epfEmployee.add(socsoEmployee).add(eisEmployee).add(incomeTax).add(unpaidDeduction);
+        BigDecimal netSalary = adjustedGross.subtract(epfEmployee).subtract(socsoEmployee).subtract(eisEmployee).subtract(incomeTax);
 
         Payroll payroll = Payroll.builder()
                 .employee(employee)
@@ -109,13 +123,27 @@ public class PayrollService {
                 .epfEmployer(epfEmployer)
                 .socsoEmployee(socsoEmployee)
                 .socsoEmployer(socsoEmployer)
+                .eisEmployee(eisEmployee)
+                .eisEmployer(eisEmployer)
                 .incomeTax(incomeTax)
                 .unpaidLeaveDeduction(unpaidDeduction)
                 .totalDeductions(totalDeductions)
                 .netSalary(netSalary)
                 .build();
 
-        return payrollRepository.save(payroll);
+        Payroll savedPayroll = payrollRepository.save(payroll);
+        log.info("Payroll saved for employee {} — net salary: RM {}", employee.getEmployeeCode(), netSalary);
+
+        try {
+            String monthLabel = java.time.Month.of(month).getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.ENGLISH);
+            String title = "Payslip Ready: " + monthLabel + " " + year;
+            String message = "Your payslip for " + monthLabel + " " + year + " has been processed. Net Salary: RM " + savedPayroll.getNetSalary() + ".";
+            notificationService.createNotification(employee.getUser(), title, message);
+        } catch (Exception e) {
+            log.error("Failed to send payroll notification for employee {}: {}", employee.getEmployeeCode(), e.getMessage());
+        }
+
+        return savedPayroll;
     }
 
     private int calculateWorkingDays(int month, int year) {
@@ -139,31 +167,21 @@ public class PayrollService {
                 .stream()
                 .filter(l -> l.getLeaveType() == LeaveType.UNPAID)
                 .filter(l -> !l.getStartDate().isAfter(endOfMonth) && !l.getEndDate().isBefore(startOfMonth))
-                .mapToLong(LeaveRequest::getTotalDays) // Simplified: assuming entire leave falls within month
+                .mapToLong(LeaveRequest::getTotalDays)
                 .sum();
     }
 
-    private BigDecimal calculateSocsoEmployee(BigDecimal salary) {
-        // Mock SOCSO tier: roughly 0.5%
-        return salary.multiply(new BigDecimal("0.005")).setScale(2, RoundingMode.HALF_UP);
-    }
-
-    private BigDecimal calculateSocsoEmployer(BigDecimal salary) {
-        // Mock SOCSO employer tier: roughly 1.75%
-        return salary.multiply(new BigDecimal("0.0175")).setScale(2, RoundingMode.HALF_UP);
-    }
-
-    public List<PayrollResponse> getPayrollHistory(Long employeeId) {
-        return payrollRepository.findByEmployeeIdOrderByYearDescMonthDesc(employeeId).stream()
-                .map(payrollMapper::toResponse)
-                .collect(Collectors.toList());
+    public Page<PayrollResponse> getPayrollHistory(Long employeeId, Pageable pageable) {
+        return payrollRepository.findByEmployeeId(employeeId, pageable)
+                .map(payrollMapper::toResponse);
     }
 
     public List<PayrollResponse> getMyPayroll(String email) {
         Employee employee = employeeRepository.findByUserEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found for email: " + email));
-        
-        return getPayrollHistory(employee.getId());
+        return payrollRepository.findByEmployeeIdOrderByYearDescMonthDesc(employee.getId()).stream()
+                .map(payrollMapper::toResponse)
+                .collect(Collectors.toList());
     }
 
     @Cacheable(value = "payroll-summary", key = "#month + '-' + #year")
@@ -193,5 +211,151 @@ public class PayrollService {
         });
 
         return csv.toString();
+    }
+
+    public byte[] exportPayrollToExcel(Integer month, Integer year) {
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            String monthName = java.time.Month.of(month).getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.ENGLISH);
+            Sheet sheet = workbook.createSheet("Payroll " + monthName + " " + year);
+
+            // Header style — dark green
+            CellStyle headerStyle = workbook.createCellStyle();
+            XSSFFont headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerFont.setColor(new XSSFColor(new byte[]{(byte) 255, (byte) 255, (byte) 255}, null));
+            headerFont.setFontHeightInPoints((short) 11);
+            headerStyle.setFont(headerFont);
+            ((XSSFCellStyle) headerStyle).setFillForegroundColor(
+                    new XSSFColor(new byte[]{(byte) 21, (byte) 128, (byte) 61}, null));
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
+
+            DataFormat dataFormat = workbook.createDataFormat();
+            CellStyle moneyStyle = workbook.createCellStyle();
+            moneyStyle.setDataFormat(dataFormat.getFormat("#,##0.00"));
+
+            // Deduction style — red tint
+            CellStyle deductStyle = workbook.createCellStyle();
+            deductStyle.cloneStyleFrom(moneyStyle);
+            XSSFFont deductFont = workbook.createFont();
+            deductFont.setColor(new XSSFColor(new byte[]{(byte) 185, (byte) 28, (byte) 28}, null));
+            deductStyle.setFont(deductFont);
+
+            // Summary style
+            CellStyle summaryStyle = workbook.createCellStyle();
+            XSSFFont summaryFont = workbook.createFont();
+            summaryFont.setBold(true);
+            summaryStyle.setFont(summaryFont);
+            ((XSSFCellStyle) summaryStyle).setFillForegroundColor(
+                    new XSSFColor(new byte[]{(byte) 254, (byte) 240, (byte) 138}, null));
+            summaryStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+            CellStyle summaryMoneyStyle = workbook.createCellStyle();
+            summaryMoneyStyle.cloneStyleFrom(summaryStyle);
+            summaryMoneyStyle.setDataFormat(dataFormat.getFormat("#,##0.00"));
+
+            // Title row
+            Row titleRow = sheet.createRow(0);
+            Cell titleCell = titleRow.createCell(0);
+            titleCell.setCellValue("PAYROLL REPORT — " + monthName.toUpperCase() + " " + year);
+            CellStyle titleStyle = workbook.createCellStyle();
+            XSSFFont titleFont = workbook.createFont();
+            titleFont.setBold(true);
+            titleFont.setFontHeightInPoints((short) 14);
+            titleStyle.setFont(titleFont);
+            titleCell.setCellStyle(titleStyle);
+            titleRow.setHeightInPoints(28);
+
+            // Header row
+            String[] headers = {"No.", "Employee Name", "Basic (RM)", "Housing (RM)", "Transport (RM)",
+                    "Gross (RM)", "EPF (RM)", "SOCSO (RM)", "EIS (RM)", "Tax (RM)", "Total Deductions (RM)", "Net Salary (RM)"};
+            Row headerRow = sheet.createRow(2);
+            headerRow.setHeightInPoints(22);
+            for (int i = 0; i < headers.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(headers[i]);
+                cell.setCellStyle(headerStyle);
+            }
+
+            // Data rows
+            List<Payroll> payrolls = payrollRepository.findByMonthAndYear(month, year);
+            int rowNum = 3;
+            BigDecimal totalNet = BigDecimal.ZERO;
+            BigDecimal totalGross = BigDecimal.ZERO;
+
+            for (Payroll p : payrolls) {
+                Row row = sheet.createRow(rowNum++);
+                row.createCell(0).setCellValue(rowNum - 3);
+                row.createCell(1).setCellValue(p.getEmployee().getFullName() != null ? p.getEmployee().getFullName() : "");
+
+                Cell basicCell = row.createCell(2);
+                basicCell.setCellValue(p.getBasicSalary() != null ? p.getBasicSalary().doubleValue() : 0);
+                basicCell.setCellStyle(moneyStyle);
+
+                Cell housingCell = row.createCell(3);
+                housingCell.setCellValue(p.getHousingAllowance() != null ? p.getHousingAllowance().doubleValue() : 0);
+                housingCell.setCellStyle(moneyStyle);
+
+                Cell transportCell = row.createCell(4);
+                transportCell.setCellValue(p.getTransportAllowance() != null ? p.getTransportAllowance().doubleValue() : 0);
+                transportCell.setCellStyle(moneyStyle);
+
+                Cell grossCell = row.createCell(5);
+                grossCell.setCellValue(p.getGrossSalary() != null ? p.getGrossSalary().doubleValue() : 0);
+                grossCell.setCellStyle(moneyStyle);
+
+                Cell epfCell = row.createCell(6);
+                epfCell.setCellValue(p.getEpfEmployee() != null ? p.getEpfEmployee().doubleValue() : 0);
+                epfCell.setCellStyle(deductStyle);
+
+                Cell socsoCell = row.createCell(7);
+                socsoCell.setCellValue(p.getSocsoEmployee() != null ? p.getSocsoEmployee().doubleValue() : 0);
+                socsoCell.setCellStyle(deductStyle);
+
+                Cell eisCell = row.createCell(8);
+                eisCell.setCellValue(p.getEisEmployee() != null ? p.getEisEmployee().doubleValue() : 0);
+                eisCell.setCellStyle(deductStyle);
+
+                Cell taxCell = row.createCell(9);
+                taxCell.setCellValue(p.getIncomeTax() != null ? p.getIncomeTax().doubleValue() : 0);
+                taxCell.setCellStyle(deductStyle);
+
+                Cell totalDeductCell = row.createCell(10);
+                totalDeductCell.setCellValue(p.getTotalDeductions() != null ? p.getTotalDeductions().doubleValue() : 0);
+                totalDeductCell.setCellStyle(deductStyle);
+
+                Cell netCell = row.createCell(11);
+                netCell.setCellValue(p.getNetSalary() != null ? p.getNetSalary().doubleValue() : 0);
+                netCell.setCellStyle(moneyStyle);
+
+                if (p.getNetSalary() != null) totalNet = totalNet.add(p.getNetSalary());
+                if (p.getGrossSalary() != null) totalGross = totalGross.add(p.getGrossSalary());
+            }
+
+            // Summary row
+            Row summaryRow = sheet.createRow(rowNum + 1);
+            Cell summaryLabel = summaryRow.createCell(1);
+            summaryLabel.setCellValue("TOTAL (" + payrolls.size() + " employees)");
+            summaryLabel.setCellStyle(summaryStyle);
+
+            Cell grossTotal = summaryRow.createCell(5);
+            grossTotal.setCellValue(totalGross.doubleValue());
+            grossTotal.setCellStyle(summaryMoneyStyle);
+
+            Cell netTotal = summaryRow.createCell(11);
+            netTotal.setCellValue(totalNet.doubleValue());
+            netTotal.setCellStyle(summaryMoneyStyle);
+
+            // Auto-size
+            for (int i = 0; i < headers.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
+
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            workbook.write(bos);
+            return bos.toByteArray();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate Payroll Excel: " + e.getMessage(), e);
+        }
     }
 }

@@ -16,5 +16,8 @@ public record EmployeeResponse(
         BigDecimal housingAllowance,
         BigDecimal transportAllowance,
         LocalDate joinDate,
-        EmployeeStatus status
+        EmployeeStatus status,
+        String maritalStatus,
+        Integer numberOfChildren,
+        BigDecimal epfRate
 ) {}

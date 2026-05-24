@@ -18,11 +18,11 @@ const LeaveCard = ({ leave, onAction }) => (
     <div className="flex items-start justify-between mb-4">
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold">
-          {leave.employeeName.charAt(0)}
+          {(leave.employeeName || 'E').charAt(0)}
         </div>
         <div>
-          <h4 className="text-sm font-bold text-slate-800">{leave.employeeName}</h4>
-          <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">{leave.leaveType}</p>
+          <h4 className="text-sm font-bold text-slate-800">{leave.employeeName || 'Employee'}</h4>
+          <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">{leave.leaveType || 'LEAVE'}</p>
         </div>
       </div>
       <div className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border ${
@@ -30,18 +30,34 @@ const LeaveCard = ({ leave, onAction }) => (
         leave.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
         'bg-rose-50 text-rose-600 border-rose-100'
       }`}>
-        {leave.status}
+        {leave.status || 'PENDING'}
       </div>
     </div>
 
     <div className="space-y-3 mb-6">
       <div className="flex items-center gap-2 text-xs text-slate-600 bg-slate-50 p-2 rounded-xl border border-transparent">
         <Calendar size={14} className="text-slate-400" />
-        <span className="font-bold">{format(new Date(leave.startDate), 'dd MMM')}</span>
+        <span className="font-bold">
+          {leave.startDate ? (() => {
+            try {
+              return format(new Date(leave.startDate), 'dd MMM');
+            } catch (e) {
+              return 'N/A';
+            }
+          })() : 'N/A'}
+        </span>
         <span className="text-slate-300">-</span>
-        <span className="font-bold">{format(new Date(leave.endDate), 'dd MMM yyyy')}</span>
+        <span className="font-bold">
+          {leave.endDate ? (() => {
+            try {
+              return format(new Date(leave.endDate), 'dd MMM yyyy');
+            } catch (e) {
+              return 'N/A';
+            }
+          })() : 'N/A'}
+        </span>
         <span className="ml-auto bg-white px-2 py-0.5 rounded-lg border border-slate-100 text-primary-600 font-black">
-          {leave.totalDays} Days
+          {leave.totalDays || 0} Days
         </span>
       </div>
       <div className="p-3 bg-slate-50 rounded-xl border border-transparent">
@@ -80,7 +96,7 @@ const Leaves = () => {
   const fetchLeaves = async () => {
     try {
       setLoading(true);
-      const url = activeTab === 'PENDING' ? '/leaves/pending' : '/leaves/my';
+      const url = activeTab === 'PENDING' ? '/leaves/pending' : '/leaves';
       const response = await api.get(url);
       setLeaves(response.data);
     } catch (error) {
@@ -99,7 +115,7 @@ const Leaves = () => {
     try {
       if (action === 'approve') {
         await api.put(`/leaves/${id}/approve`);
-        showToast('Leave request approved! ✅', 'success');
+        showToast('Leave request approved.', 'success');
       } else {
         const reason = window.prompt('Please provide a reason for rejection:');
         if (reason === null) return;

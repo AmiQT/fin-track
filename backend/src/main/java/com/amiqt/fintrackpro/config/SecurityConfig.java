@@ -1,9 +1,12 @@
 package com.amiqt.fintrackpro.config;
 
 import com.amiqt.fintrackpro.security.JwtAuthFilter;
+import com.amiqt.fintrackpro.security.RateLimitFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -23,7 +26,6 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
-import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -32,7 +34,11 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final RateLimitFilter rateLimitFilter;
     private final UserDetailsService userDetailsService;
+
+    @Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:3000}")
+    private String allowedOrigins;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -40,20 +46,23 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/login").permitAll()
+                        .requestMatchers("/api/v1/auth/login", "/api/v1/auth/refresh").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
-                        .requestMatchers("/api/employees/me").hasAnyRole("ADMIN", "HR", "EMPLOYEE")
-                        .requestMatchers("/api/employees/**").hasAnyRole("ADMIN", "HR")
-                        .requestMatchers("/api/payroll/my").hasAnyRole("ADMIN", "HR", "EMPLOYEE")
-                        .requestMatchers("/api/payroll/**").hasAnyRole("ADMIN", "HR")
-                        .requestMatchers("/api/payslip/**").hasAnyRole("ADMIN", "HR", "EMPLOYEE")
-                        .requestMatchers("/api/dashboard/**").hasAnyRole("ADMIN", "HR", "EMPLOYEE")
-                        .requestMatchers("/api/leaves/pending").hasAnyRole("ADMIN", "HR")
+                        .requestMatchers("/api/v1/employees/me").hasAnyRole("ADMIN", "HR", "EMPLOYEE")
+                        .requestMatchers("/api/v1/employees/**").hasAnyRole("ADMIN", "HR")
+                        .requestMatchers("/api/v1/payroll/my").hasAnyRole("ADMIN", "HR", "EMPLOYEE")
+                        .requestMatchers("/api/v1/payroll/**").hasAnyRole("ADMIN", "HR")
+                        .requestMatchers("/api/v1/payslip/**").hasAnyRole("ADMIN", "HR", "EMPLOYEE")
+                        .requestMatchers("/api/v1/dashboard/**").hasAnyRole("ADMIN", "HR", "EMPLOYEE")
+                        .requestMatchers("/api/v1/notifications/**").hasAnyRole("ADMIN", "HR", "EMPLOYEE")
+                        .requestMatchers("/api/v1/leaves/pending").hasAnyRole("ADMIN", "HR")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/leaves").hasAnyRole("ADMIN", "HR")
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider())
+                .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -80,7 +89,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:3000"));
+        configuration.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "Accept"));
         configuration.setAllowCredentials(true);

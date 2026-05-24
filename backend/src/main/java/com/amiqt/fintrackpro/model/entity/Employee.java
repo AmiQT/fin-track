@@ -57,6 +57,16 @@ public class Employee {
     @Enumerated(EnumType.STRING)
     private EmployeeStatus status;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "marital_status")
+    private com.amiqt.fintrackpro.enums.MaritalStatus maritalStatus;
+
+    @Column(name = "number_of_children")
+    private Integer numberOfChildren;
+
+    @Column(name = "epf_rate")
+    private BigDecimal epfRate;
+
     @Column(name = "annual_leave_entitlement")
     private Integer annualLeaveEntitlement;
 
@@ -74,5 +84,8 @@ public class Employee {
         if (transportAllowance == null) transportAllowance = BigDecimal.ZERO;
         if (annualLeaveEntitlement == null) annualLeaveEntitlement = 14;
         if (sickLeaveEntitlement == null) sickLeaveEntitlement = 14;
+        if (maritalStatus == null) maritalStatus = com.amiqt.fintrackpro.enums.MaritalStatus.SINGLE;
+        if (numberOfChildren == null) numberOfChildren = 0;
+        if (epfRate == null) epfRate = new BigDecimal("0.11");
     }
 }

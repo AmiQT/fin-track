@@ -1,5 +1,6 @@
 package com.amiqt.fintrackpro.model.dto.request;
 
+import com.amiqt.fintrackpro.enums.MaritalStatus;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -36,6 +37,10 @@ public record EmployeeRequest(
 
         @NotNull(message = "Join date is required")
         LocalDate joinDate,
+
+        MaritalStatus maritalStatus,
+        Integer numberOfChildren,
+        BigDecimal epfRate,
         
         String password // For initial user creation
 ) {}

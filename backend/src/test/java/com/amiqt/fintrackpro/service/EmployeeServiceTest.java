@@ -54,7 +54,7 @@ public class EmployeeServiceTest {
     @DisplayName("Should return employee when ID exists")
     void getEmployeeByIdTest() {
         when(employeeRepository.findById(id)).thenReturn(Optional.of(employee));
-        EmployeeResponse response = new EmployeeResponse(id, "EMP001", "Noor Amin", "noor@fintrack.com", null, "IT", "Dev", BigDecimal.valueOf(5000), BigDecimal.ZERO, BigDecimal.ZERO, null, EmployeeStatus.ACTIVE);
+        EmployeeResponse response = new EmployeeResponse(id, "EMP001", "Noor Amin", "noor@fintrack.com", null, "IT", "Dev", BigDecimal.valueOf(5000), BigDecimal.ZERO, BigDecimal.ZERO, null, EmployeeStatus.ACTIVE, "SINGLE", 0, new BigDecimal("0.11"));
         when(employeeMapper.toResponse(employee)).thenReturn(response);
 
         EmployeeResponse result = employeeService.getEmployeeById(id);
@@ -76,10 +76,52 @@ public class EmployeeServiceTest {
     @DisplayName("Should soft delete employee by changing status to INACTIVE")
     void deleteEmployeeTest() {
         when(employeeRepository.findById(id)).thenReturn(Optional.of(employee));
-        
+
         employeeService.deleteEmployee(id);
 
         assertEquals(EmployeeStatus.INACTIVE, employee.getStatus());
         verify(employeeRepository).save(employee);
+    }
+
+    @Test
+    @DisplayName("Should update employee fields correctly")
+    void updateEmployeeTest() {
+        EmployeeRequest request = new EmployeeRequest(
+                "EMP001", "Noor Updated", "noor@fintrack.com", "012-9999999",
+                "HR", "Manager",
+                BigDecimal.valueOf(7000), BigDecimal.valueOf(600), BigDecimal.valueOf(400),
+                null, null, null, null, null
+        );
+        EmployeeResponse expected = new EmployeeResponse(
+                id, "EMP001", "Noor Updated", "noor@fintrack.com",
+                "012-9999999", "HR", "Manager",
+                BigDecimal.valueOf(7000), BigDecimal.valueOf(600), BigDecimal.valueOf(400),
+                null, EmployeeStatus.ACTIVE, "SINGLE", 0, new BigDecimal("0.11")
+        );
+
+        when(employeeRepository.findById(id)).thenReturn(Optional.of(employee));
+        when(employeeRepository.save(any())).thenReturn(employee);
+        when(employeeMapper.toResponse(any())).thenReturn(expected);
+
+        EmployeeResponse result = employeeService.updateEmployee(id, request);
+
+        assertNotNull(result);
+        assertEquals("Noor Updated", result.fullName());
+        assertEquals("HR", result.department());
+        verify(employeeRepository).save(employee);
+    }
+
+    @Test
+    @DisplayName("Should throw ResourceNotFoundException when updating non-existent employee")
+    void updateEmployeeNotFoundTest() {
+        EmployeeRequest request = new EmployeeRequest(
+                "EMP999", "Ghost", "ghost@fintrack.com", null,
+                "IT", "Dev",
+                BigDecimal.valueOf(3000), BigDecimal.ZERO, BigDecimal.ZERO,
+                null, null, null, null, null
+        );
+        when(employeeRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> employeeService.updateEmployee(99L, request));
     }
 }

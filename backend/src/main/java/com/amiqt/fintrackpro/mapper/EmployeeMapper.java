@@ -20,6 +20,9 @@ public class EmployeeMapper {
                 .housingAllowance(request.housingAllowance())
                 .transportAllowance(request.transportAllowance())
                 .joinDate(request.joinDate())
+                .maritalStatus(request.maritalStatus())
+                .numberOfChildren(request.numberOfChildren())
+                .epfRate(request.epfRate())
                 .build();
     }
 
@@ -36,7 +39,10 @@ public class EmployeeMapper {
                 employee.getHousingAllowance(),
                 employee.getTransportAllowance(),
                 employee.getJoinDate(),
-                employee.getStatus()
+                employee.getStatus(),
+                employee.getMaritalStatus() != null ? employee.getMaritalStatus().name() : null,
+                employee.getNumberOfChildren(),
+                employee.getEpfRate()
         );
     }
 }

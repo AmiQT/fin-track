@@ -87,7 +87,7 @@ const MyLeaves = () => {
 
     try {
       await api.post('/leaves', formData);
-      showToast('Leave request submitted successfully! 📅', 'success');
+      showToast('Leave request submitted successfully.', 'success');
       setShowModal(false);
       setFormData({ leaveType: 'ANNUAL', startDate: '', endDate: '', reason: '' });
       fetchMyLeaves();
