@@ -136,7 +136,7 @@ const PayslipCard = ({ payroll, onDownload }) => {
 
           {/* EPF note */}
           <p className="text-[10px] text-slate-400 mt-3 leading-relaxed px-1">
-            💡 <span className="font-semibold">Note:</span> EPF employer contribution (13%) of RM {(payroll.epfEmployer || 0).toFixed(2)} is paid separately by your employer and does not affect your take-home pay.
+            <span className="font-semibold">Note:</span> EPF employer contribution (13%) of RM {(payroll.epfEmployer || 0).toFixed(2)} is paid separately by your employer and does not affect your take-home pay.
           </p>
         </div>
       )}

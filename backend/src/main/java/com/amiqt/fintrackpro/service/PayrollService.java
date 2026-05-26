@@ -10,10 +10,15 @@ import com.amiqt.fintrackpro.model.dto.response.PayrollResponse;
 import com.amiqt.fintrackpro.model.entity.Employee;
 import com.amiqt.fintrackpro.model.entity.Payroll;
 import com.amiqt.fintrackpro.model.entity.LeaveRequest;
+import com.amiqt.fintrackpro.model.entity.OutboxMessage;
+import com.amiqt.fintrackpro.model.event.ProcessPayrollCommand;
 import com.amiqt.fintrackpro.repository.EmployeeRepository;
 import com.amiqt.fintrackpro.repository.PayrollRepository;
 import com.amiqt.fintrackpro.repository.LeaveRepository;
+import com.amiqt.fintrackpro.repository.OutboxMessageRepository;
 import com.amiqt.fintrackpro.service.payroll.*;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
@@ -33,8 +38,10 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -47,6 +54,8 @@ public class PayrollService {
     private final LeaveRepository leaveRepository;
     private final PayrollMapper payrollMapper;
     private final NotificationService notificationService;
+    private final OutboxMessageRepository outboxMessageRepository;
+    private final ObjectMapper objectMapper;
 
     // Payroll Calculators (Strategy Pattern)
     private final EpfCalculator epfCalculator;
@@ -57,17 +66,74 @@ public class PayrollService {
     @Transactional
     @CacheEvict(value = "dashboard-summary", allEntries = true)
     public List<PayrollResponse> processPayroll(PayrollRequest request) {
-        log.info("Processing payroll for {}/{}", request.month(), request.year());
+        log.info("Queuing asynchronous payroll processing for {}/{}", request.month(), request.year());
+        
         List<Employee> activeEmployees = employeeRepository.findAll().stream()
                 .filter(e -> e.getStatus().name().equals("ACTIVE"))
                 .toList();
 
+        UUID transactionId = UUID.randomUUID();
+
         List<PayrollResponse> results = activeEmployees.stream()
-                .map(employee -> calculatePayroll(employee, request.month(), request.year()))
-                .map(payrollMapper::toResponse)
+                .map(employee -> {
+                    // Check if payroll already exists to avoid redundant queue events
+                    payrollRepository.findByEmployeeIdAndMonthAndYear(employee.getId(), request.month(), request.year())
+                            .ifPresent(p -> {
+                                throw new PayrollAlreadyProcessedException(
+                                        "Payroll already processed for employee " + employee.getEmployeeCode() + " for " + request.month() + "/" + request.year()
+                                );
+                            });
+
+                    // Construct Async Command DTO
+                    ProcessPayrollCommand command = new ProcessPayrollCommand(
+                            employee.getId(),
+                            request.month(),
+                            request.year(),
+                            transactionId
+                    );
+                    
+                    try {
+                        String payloadJson = objectMapper.writeValueAsString(command);
+                        OutboxMessage outboxMessage = OutboxMessage.builder()
+                                .id(UUID.randomUUID())
+                                .topic("payroll-commands")
+                                .payload(payloadJson)
+                                .status("PENDING")
+                                .retryCount(0)
+                                .build();
+                        
+                        log.info("Persisting ProcessPayrollCommand to outbox for employee id: {} (TxID: {})", employee.getId(), transactionId);
+                        outboxMessageRepository.save(outboxMessage);
+                    } catch (JsonProcessingException e) {
+                        log.error("Failed to serialize ProcessPayrollCommand for employee id: {}: {}", employee.getId(), e.getMessage());
+                        throw new IllegalArgumentException("Failed to serialize payroll event", e);
+                    }
+
+                    // Return simulated response indicating processing state
+                    return new PayrollResponse(
+                            null,
+                            employee.getId(),
+                            employee.getFullName(),
+                            request.month(),
+                            request.year(),
+                            BigDecimal.ZERO,
+                            BigDecimal.ZERO,
+                            BigDecimal.ZERO,
+                            BigDecimal.ZERO,
+                            BigDecimal.ZERO,
+                            BigDecimal.ZERO,
+                            BigDecimal.ZERO,
+                            BigDecimal.ZERO,
+                            BigDecimal.ZERO,
+                            BigDecimal.ZERO,
+                            BigDecimal.ZERO,
+                            BigDecimal.ZERO,
+                            LocalDateTime.now()
+                    );
+                })
                 .collect(Collectors.toList());
 
-        log.info("Payroll processed for {} employees — {}/{}", results.size(), request.month(), request.year());
+        log.info("Queued {} payroll command events successfully in Apache Kafka for {}/{}", results.size(), request.month(), request.year());
         return results;
     }
 

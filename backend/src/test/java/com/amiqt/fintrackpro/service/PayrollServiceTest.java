@@ -9,10 +9,12 @@ import com.amiqt.fintrackpro.model.entity.Payroll;
 import com.amiqt.fintrackpro.repository.EmployeeRepository;
 import com.amiqt.fintrackpro.repository.LeaveRepository;
 import com.amiqt.fintrackpro.repository.PayrollRepository;
+import com.amiqt.fintrackpro.repository.OutboxMessageRepository;
 import com.amiqt.fintrackpro.service.payroll.EisCalculator;
 import com.amiqt.fintrackpro.service.payroll.EpfCalculator;
 import com.amiqt.fintrackpro.service.payroll.PcbCalculator;
 import com.amiqt.fintrackpro.service.payroll.SocsoCalculator;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -42,6 +44,8 @@ public class PayrollServiceTest {
     @Mock private SocsoCalculator socsoCalculator;
     @Mock private EisCalculator eisCalculator;
     @Mock private PcbCalculator pcbCalculator;
+    @Mock private OutboxMessageRepository outboxMessageRepository;
+    @Mock private ObjectMapper objectMapper;
 
     @InjectMocks
     private PayrollService payrollService;

@@ -1,4 +1,4 @@
-# 🏦 FinTrack Pro: Next-Gen Payroll & HR Management
+# FinTrack Pro: Next-Gen Payroll & HR Management
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
 ![Java](https://img.shields.io/badge/Java-21-orange.svg)
@@ -9,30 +9,30 @@
 
 ---
 
-## ✨ Key Features
+## Key Features
 
-### 👩‍💼 Employee Management
+### Employee Management
 - **Centralized Directory**: Full CRUD operations for employee records.
 - **Role-Based Access**: Specialized views for Admins, HR, and Employees.
 - **Status Tracking**: Manage active and inactive personnel.
 
-### 💰 Automated Payroll Engine
+### Automated Payroll Engine
 - **Precise Calculations**: Automated logic for Basic Salary, EPF (11%/13%), SOCSO, and PCB Tax.
 - **Unpaid Leave Awareness**: Automatic salary deductions based on approved unpaid leaves and working days.
 - **Interactive Analytics**: Monthly payroll trends and headcount distributions using Recharts.
 
-### 📅 Leave Management Workflow
+### Leave Management Workflow
 - **Application Portal**: Employees can apply for various leave types (Annual, Medical, Unpaid).
 - **Balance Tracking**: Real-time deduction and visual tracking of Annual and Sick leave entitlements.
 - **Approval System**: Streamlined workflow for HR/Managers to review, approve, or reject requests. Rejected requests automatically refund leave balances.
 
-### 📄 Digital Payslips
+### Digital Payslips
 - **PDF Generation**: Generate and download professional payslips powered by iText 7.
 - **Secure Access**: Employees can only access their personal payment history.
 
 ---
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 ### Backend
 - **Core**: Java 21, Spring Boot 3.2
@@ -50,7 +50,7 @@
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 - Docker & Docker Desktop
@@ -73,30 +73,43 @@ Access the application:
 
 ---
 
-## 🧪 Testing & Validation
+## Testing & Validation
 
-The backend is fortified with a comprehensive unit testing suite ensuring business logic and security components are robust, reliable, and production-ready.
+The backend is fortified with a comprehensive unit and integration testing suite ensuring business logic and security components are robust, reliable, and production-ready.
 
 ```bash
 cd backend
 mvn clean test
 ```
 
-**Fully Validated Services:** `AuthService`, `EmployeeService`, `LeaveService`, and `PayrollService`.
+* **Fully Validated Services:** `AuthService`, `EmployeeService`, `LeaveService`, `PayrollService`, and core domain calculators (`EpfCalculator`, `SocsoCalculator`, `EisCalculator`, `PcbCalculator`).
+* **Integration Testing:** Power-boosted by **Testcontainers** for real PostgreSQL database isolation during execution.
+* **Code Coverage (Jacoco):** Every build automatically generates a detailed code coverage report. View the coverage breakdown locally at `backend/target/site/jacoco/index.html`.
 
 ---
 
-## 🛡️ Security & Stabilization
+## Observability & CI/CD Pipeline
+
+FinTrack Pro implements modern DevOps principles to support reliable, production-grade scaling:
+
+* **Automated CI/CD:** A robust **GitHub Actions** workflow (`.github/workflows/ci.yml`) compiles code, runs all 42 tests (spinning up real Testcontainers), and auto-uploads JUnit and Jacoco coverage reports on every push or Pull Request.
+* **Enterprise Structured Logging:** Configured with a profile-aware [logback-spring.xml](backend/src/main/resources/logback-spring.xml). It outputs beautiful console logs for local development (`dev`), and manages production logs (`prod`) via rolling files rotated daily and size-capped (10MB per file, up to 1GB total retention) inside `backend/logs/`.
+* **System Metrics (Prometheus):** Integrates **Spring Boot Actuator** to safely expose system telemetry, memory logs, and Prometheus metrics at `http://localhost:8080/actuator/prometheus` for seamless integration with Grafana.
+
+---
+
+## Security & Stabilization
 
 FinTrack Pro uses **JWT-based stateless authentication**.
 Recent stabilizations include:
 - Resolved login redirect loops for staff users.
 - Fixed staff password hash corruption.
 - Seamlessly aligned backend and frontend authentication logic for flawless access.
+- Implemented API Rate Limiting using **Bucket4j** to protect against brute-force attacks and resource exhaustion.
 
 ---
 
-## 👤 Employee Self-Service Features
+## Employee Self-Service Features
 
 Employees can access their own data without admin privileges:
 
@@ -112,7 +125,7 @@ Employee identity is resolved **securely via their authenticated JWT email** —
 
 ---
 
-## ✅ Project Status
+## Project Status
 
 > **COMPLETED** — All planned features have been implemented and tested.
 
@@ -125,13 +138,17 @@ Employee identity is resolved **securely via their authenticated JWT email** —
 | My Leaves (Employee) | Done |
 | My Payslips + PDF (Employee) | Done |
 | My Profile (Employee) | Done |
-| Unit Tests (Auth, Employee, Leave, Payroll) | Done |
+| Unit & Integration Tests (Testcontainers) | Done |
+| Code Coverage Metrics (Jacoco) | Done |
+| Automated CI/CD (GitHub Actions) | Done |
+| Production Rolling Logging (Logback) | Done |
+| Prometheus Telemetry (Actuator) | Done |
 | Docker Compose Full Stack | Done |
 
 ---
 
-## 📄 License
+## License
 This project is licensed under the MIT License - see the LICENSE file for details.
 
 ---
-*Built with ❤️ for Modern HR Teams.*
+*Built for Modern HR Teams.*
